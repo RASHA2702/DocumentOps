@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>DocumentOps.Api</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DocumentOps.Core\DocumentOps.Core.csproj" />
+    <ProjectReference Include="..\DocumentOps.Application\DocumentOps.Application.csproj" />
+    <ProjectReference Include="..\DocumentOps.Infrastructure\DocumentOps.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

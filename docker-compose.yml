@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  documentops-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: documentops-api
+    ports:
+      - "5080:5080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5080
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3

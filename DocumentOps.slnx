@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DocumentOps.Core/DocumentOps.Core.csproj" />
+  </Folder>
+  <Project Path="src/DocumentOps.Api/DocumentOps.Api.csproj" />
+  <Project Path="src/DocumentOps.Application/DocumentOps.Application.csproj" />
+  <Project Path="src/DocumentOps.Infrastructure/DocumentOps.Infrastructure.csproj" />
+  <Project Path="tests/DocumentOps.Tests/DocumentOps.Tests.csproj" />
+</Solution>
