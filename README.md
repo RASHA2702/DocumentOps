@@ -3,7 +3,7 @@
 > **Enterprise-grade document processing pipeline built with .NET 8 Clean Architecture, featuring deterministic regex extraction, an extensible document intelligence pipeline, cross-field arithmetic validation, and a Human-in-the-Loop (HITL) review queue for automated ERP ingestion.**
 
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
-[![Tests](https://img.shields.io/badge/Tests-19%20Passed%20(100%25)-success)](https://github.com/RASHA2702/DocumentOps)
+[![Tests](https://img.shields.io/badge/Tests-29%20Passed%20(100%25)-success)](https://github.com/RASHA2702/DocumentOps)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Clean Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20DDD-green)](docs/ARCHITECTURE.md)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](Dockerfile)
@@ -19,7 +19,7 @@ While modern OCR and vision models can extract raw text, commercial operations f
 2. **Vendor Rate Limits & Cost**: Sending thousands of repetitive invoices to external cloud APIs introduces latency, recurring fees, and API downtime.
 3. **Lack of Human Oversight**: Without a robust Human-in-the-Loop (HITL) review mechanism with blocking guards, error-ridden invoices get posted directly into financial ledgers.
 
-**DocumentOps** provides a battle-tested, self-hosted solution that combines **instant offline deterministic extraction**, **cross-field arithmetic validation**, **weighted confidence scoring**, and an **auditable human review workflow** before producing standard ERP export payloads.
+**DocumentOps** provides a self-hosted solution that combines **instant offline deterministic extraction**, **cross-field arithmetic validation**, **rule-weighted confidence scoring**, and an **auditable human review workflow** before producing standard ERP export payloads.
 
 ---
 
@@ -29,14 +29,14 @@ While modern OCR and vision models can extract raw text, commercial operations f
 flowchart TD
     RawDoc["Uploaded Document (Raw Text / File)"] --> Hash["SHA-256 Deduplication Guard"]
     Hash --> Extract["IDocumentExtractor (Deterministic / Pluggable AI)"]
-    Extract --> Val["Validation Engine (7 Invariant Rules)"]
-    Val --> Score["Confidence Scorer (0.00 - 1.00)"]
+    Extract --> Val["Validation Engine (9 Invariant Rules)"]
+    Val --> Score["Confidence Scorer (0.00 - 1.00 Heuristic Rule-Weights)"]
     Score --> Decision{"Score >= 0.85 & Errors == 0?"}
     Decision -- Yes --> AutoApprove["Status: Approved (System Auto-Approval)"]
     Decision -- No --> ReviewQueue["Status: RequiresReview (HITL Queue)"]
     ReviewQueue --> Auditor["Auditor Field Editing & Discrepancy Resolution"]
     Auditor --> AutoApprove
-    AutoApprove --> ERPExport["ERP Export Service (UBL JSON / Ledger CSV)"]
+    AutoApprove --> ERPExport["ERP Export Service (UBL-modeled JSON / CWE-1236 Sanitized CSV)"]
     ERPExport --> FinalStatus["Status: Exported"]
 ```
 
@@ -44,8 +44,8 @@ flowchart TD
 - **`DocumentOps.Core`**: Pure domain entities (`DocumentRecord`, `InvoiceData`, `InvoiceLineItem`, `ValidationDiscrepancy`, `DocumentAuditLog`) and status enums. Zero external dependencies.
 - **`DocumentOps.Application`**: Use cases, validation engine (`IValidationEngine`), confidence scoring (`IConfidenceScorer`), and orchestrators (`DocumentProcessingService`, `DocumentReviewService`).
 - **`DocumentOps.Infrastructure`**: Deterministic rule extractor (`RegexDocumentExtractor`), pluggable AI adapter (`MockAiDocumentExtractor`), thread-safe repository (`InMemoryDocumentRepository`), and ERP exporter (`ErpExportService`).
-- **`DocumentOps.Api`**: ASP.NET Core minimal Web API with RFC 7807 `ProblemDetails` error handling and health probes.
-- **`DocumentOps.Tests`**: 19 automated tests covering extraction accuracy, arithmetic auditing, scoring penalties, approval guards, and ERP formatting.
+- **`DocumentOps.Api`**: ASP.NET Core minimal Web API with RFC 9457 `ProblemDetails` error handling and health probes.
+- **`DocumentOps.Tests`**: 29 automated tests covering extraction accuracy, arithmetic auditing, currency subunit precision, line item duplicate detection, scoring penalties, approval guards, and CSV formula injection defense.
 
 ---
 
@@ -55,15 +55,17 @@ flowchart TD
 - **Sub-Millisecond Regex Parser**: Extracts vendor name, invoice number, issue/due dates, tax ID, currency, subtotal, tax amount, and multi-line item tables 100% offline.
 - **Extensible Pipeline Interface**: Standardized `IDocumentExtractor` contract allows drop-in integration with document intelligence APIs and vision models, with automatic fallback to deterministic parsing upon rate limiting or network downtime.
 
-### 🛡️ Cross-Field Arithmetic Invariant Engine
-The validation engine continuously audits financial documents for arithmetic and temporal consistency:
+### 🛡️ Cross-Field Arithmetic & Currency Invariant Engine
+The validation engine continuously audits financial documents for arithmetic, currency precision, and temporal consistency across 9 invariant rules:
 - **Cross-field reconciliation**: Enforces `|(Subtotal + Tax) - Total| <= 0.01`. Any discrepancy triggers a blocking `INV_ARITHMETIC_MISMATCH` error.
 - **Line item summation**: Verifies that the sum of line items equals the reported subtotal.
+- **Currency Subunit Precision (ISO 4217)**: Flags `INV_CURRENCY_PRECISION_MISMATCH` if amounts contain fractional cents in zero-decimal currencies (JPY, KRW, VND) or exceed standard currency decimal limits.
+- **Line Item Detail & Duplicate Detection**: Enforces positive quantities, non-negative unit prices, line item calculation accuracy, and flags potential duplicate line items (`INV_DUPLICATE_LINE_ITEM`).
 - **Temporal verification**: Detects date anomalies such as `DueDate < IssueDate` or suspicious future/historical dates.
 - **Duplicate prevention**: Flags duplicate invoice numbers from identical vendors (`INV_DUPLICATE_NUMBER`) and avoids duplicate processing via SHA-256 document hashing.
 
 ### ⚖️ Weighted Confidence Scoring
-- Dynamically calculates a confidence score $C \in [0.0, 1.0]$ based on field completeness signals ($+0.20$ for invoice #, $+0.20$ for vendor, $+0.15$ for arithmetic reconciliation) and deductions for discrepancies ($-0.35$ for errors, $-0.10$ for warnings).
+- Calculates a transparent composite confidence score $C \in [0.0, 1.0]$ based on deterministic rule weights ($+0.20$ for invoice #, $+0.20$ for vendor, $+0.15$ for arithmetic reconciliation, $+0.10$ for line item match) minus penalties for discrepancies ($-0.35$ for errors, $-0.10$ for warnings).
 - **Auto-Approval**: Documents with $C \ge 0.85$ and 0 errors bypass manual queues. Flawed documents are safely routed to the human review queue.
 
 ### 👥 Human-in-the-Loop (HITL) Review Queue
@@ -71,9 +73,9 @@ The validation engine continuously audits financial documents for arithmetic and
 - Reviewers can update extracted fields and resolve discrepancy flags.
 - **Strict Approval Guards**: The system prohibits approval if any unresolved blocking `Error` exists.
 
-### 📤 Multi-Format ERP Export
-- **UBL 2.1 JSON**: Standardized enterprise JSON schema ready for automated ingestion by QuickBooks, Xero, or custom enterprise APIs.
-- **General Ledger CSV**: Formatted tabular CSV including header metadata and itemized transaction rows.
+### 📤 Multi-Format ERP Export & Security
+- **UBL-Modeled JSON**: Structured accounting schema modeled on UBL 2.1 invoice conventions for automated ingestion by enterprise accounting APIs.
+- **Sanitized General Ledger CSV (CWE-1236 Defense)**: Formatted tabular CSV including header metadata and itemized transaction rows, protected against spreadsheet formula execution (`=`, `+`, `-`, `@`, tab, CR prefix neutralization).
 
 ---
 
@@ -89,7 +91,7 @@ The validation engine continuously audits financial documents for arithmetic and
 | `PUT` | `/api/documents/{id}/review` | Human review update endpoint to modify fields and resolve flags. |
 | `POST` | `/api/documents/{id}/approve` | Mark document as approved for ERP export (blocked if errors exist). |
 | `POST` | `/api/documents/{id}/reject` | Reject invalid document with recorded reason. |
-| `GET` | `/api/documents/{id}/export` | Export approved invoice in `format=json` (UBL) or `format=csv`. |
+| `GET` | `/api/documents/{id}/export` | Export approved invoice in `format=json` (UBL-modeled) or `format=csv`. |
 
 ---
 
@@ -164,19 +166,21 @@ dotnet test tests/DocumentOps.Tests/DocumentOps.Tests.csproj
 ```
 
 **Results:**
-```
+```text
 Test run for DocumentOps.Tests.dll (.NETCoreApp,Version=v8.0)
-Passed!  - Failed:     0, Passed:    19, Skipped:     0, Total:    19, Duration: 875 ms
+Passed!  - Failed: 0, Passed: 29, Skipped: 0, Total: 29, Duration: 596 ms
 ```
 
 ### Test Coverage Highlights
-- ✅ Standard US & European currency and date format parsing.
-- ✅ Fallback subtotal calculation from parsed line items.
-- ✅ Arithmetic discrepancy detection (`INV_ARITHMETIC_MISMATCH`).
-- ✅ Temporal inversion detection (`INV_DUE_BEFORE_ISSUE`).
-- ✅ SHA-256 duplicate document detection.
-- ✅ Approval barrier blocking unverified error states.
-- ✅ Full UBL 2.1 JSON and CSV general ledger export formatting.
+- Standard US & European currency and date format parsing.
+- Fallback subtotal calculation from parsed line items.
+- Arithmetic discrepancy detection (`INV_ARITHMETIC_MISMATCH`).
+- Currency subunit precision validation (`INV_CURRENCY_PRECISION_MISMATCH`).
+- Line item quantity, negative price, and duplicate description detection (`INV_DUPLICATE_LINE_ITEM`).
+- Temporal inversion detection (`INV_DUE_BEFORE_ISSUE`).
+- SHA-256 duplicate document detection.
+- Approval barrier blocking unverified error states.
+- UBL-modeled JSON and sanitized CSV export formatting with CWE-1236 formula defense.
 
 ---
 

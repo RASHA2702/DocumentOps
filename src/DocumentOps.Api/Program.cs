@@ -17,9 +17,16 @@ var app = builder.Build();
 
 app.UseCors("AllowAll");
 
-// Global exception handling (RFC 7807)
+// Global exception handling (RFC 9457 ProblemDetails)
 app.Use(async (context, next) =>
 {
+    const string correlationHeader = "X-Correlation-ID";
+    if (!context.Request.Headers.TryGetValue(correlationHeader, out var correlationId) || string.IsNullOrWhiteSpace(correlationId))
+    {
+        correlationId = Guid.NewGuid().ToString("N");
+    }
+    context.Response.Headers[correlationHeader] = correlationId;
+
     try
     {
         await next(context);
@@ -30,10 +37,12 @@ app.Use(async (context, next) =>
         context.Response.ContentType = "application/problem+json";
         await context.Response.WriteAsJsonAsync(new
         {
-            type = "https://tools.ietf.org/html/rfc7807",
+            type = "https://datatracker.ietf.org/doc/html/rfc9457#section-3",
             title = "Resource Not Found",
             status = StatusCodes.Status404NotFound,
-            detail = ex.Message
+            detail = ex.Message,
+            correlationId = correlationId.ToString(),
+            instance = context.Request.Path.ToString()
         });
     }
     catch (InvalidOperationException ex)
@@ -42,10 +51,12 @@ app.Use(async (context, next) =>
         context.Response.ContentType = "application/problem+json";
         await context.Response.WriteAsJsonAsync(new
         {
-            type = "https://tools.ietf.org/html/rfc7807",
+            type = "https://datatracker.ietf.org/doc/html/rfc9457#section-3",
             title = "Invalid Business Operation",
             status = StatusCodes.Status400BadRequest,
-            detail = ex.Message
+            detail = ex.Message,
+            correlationId = correlationId.ToString(),
+            instance = context.Request.Path.ToString()
         });
     }
     catch (ArgumentException ex)
@@ -54,10 +65,12 @@ app.Use(async (context, next) =>
         context.Response.ContentType = "application/problem+json";
         await context.Response.WriteAsJsonAsync(new
         {
-            type = "https://tools.ietf.org/html/rfc7807",
+            type = "https://datatracker.ietf.org/doc/html/rfc9457#section-3",
             title = "Validation Error",
             status = StatusCodes.Status400BadRequest,
-            detail = ex.Message
+            detail = ex.Message,
+            correlationId = correlationId.ToString(),
+            instance = context.Request.Path.ToString()
         });
     }
     catch (Exception)
@@ -66,10 +79,12 @@ app.Use(async (context, next) =>
         context.Response.ContentType = "application/problem+json";
         await context.Response.WriteAsJsonAsync(new
         {
-            type = "https://tools.ietf.org/html/rfc7807",
+            type = "https://datatracker.ietf.org/doc/html/rfc9457#section-3",
             title = "Internal Server Error",
             status = StatusCodes.Status500InternalServerError,
-            detail = "An unexpected error occurred processing your request."
+            detail = "An unexpected error occurred processing your request. Please reference the correlation ID.",
+            correlationId = correlationId.ToString(),
+            instance = context.Request.Path.ToString()
         });
     }
 });

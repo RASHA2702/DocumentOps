@@ -110,9 +110,18 @@ public class ErpExportService : IErpExportService
         return Task.FromResult(JsonSerializer.Serialize(exportPayload, JsonOptions));
     }
 
-    private static string EscapeCsv(string value)
+    public static string EscapeCsv(string? value)
     {
-        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+        if (string.IsNullOrEmpty(value)) return "\"\"";
+
+        // Neutralize CSV Formula Injection (CWE-1236)
+        char firstChar = value[0];
+        if (firstChar is '=' or '+' or '-' or '@' or '\t' or '\r')
+        {
+            value = "'" + value;
+        }
+
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
         {
             return $"\"{value.Replace("\"", "\"\"")}\"";
         }

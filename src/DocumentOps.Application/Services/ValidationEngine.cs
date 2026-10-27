@@ -133,6 +133,111 @@ public class ValidationEngine : IValidationEngine
             }
         }
 
+        // 8. Currency Subunit Precision Check (ISO 4217 standard)
+        if (!string.IsNullOrWhiteSpace(invoice.Currency))
+        {
+            var currency = invoice.Currency.Trim().ToUpperInvariant();
+            int maxDecimals = GetExpectedDecimalPlaces(currency);
+            if (HasExcessDecimals(invoice.TotalAmount, maxDecimals) ||
+                HasExcessDecimals(invoice.Subtotal, maxDecimals) ||
+                HasExcessDecimals(invoice.TaxAmount, maxDecimals))
+            {
+                result.Discrepancies.Add(new ValidationDiscrepancy
+                {
+                    RuleCode = "INV_CURRENCY_PRECISION_MISMATCH",
+                    Severity = DiscrepancySeverity.Warning,
+                    FieldName = nameof(invoice.Currency),
+                    Message = $"Monetary amounts exceed standard ISO 4217 decimal precision ({maxDecimals} decimals) for currency '{currency}'.",
+                    ExpectedValue = $"Up to {maxDecimals} decimal places",
+                    ActualValue = $"Total: {invoice.TotalAmount}, Subtotal: {invoice.Subtotal}, Tax: {invoice.TaxAmount}"
+                });
+            }
+        }
+
+        // 9. Individual Line Item Integrity & Duplicate Detection
+        if (invoice.LineItems != null && invoice.LineItems.Count > 0)
+        {
+            var seenDescriptions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < invoice.LineItems.Count; i++)
+            {
+                var item = invoice.LineItems[i];
+                int lineNum = i + 1;
+
+                if (item.Quantity <= 0)
+                {
+                    result.Discrepancies.Add(new ValidationDiscrepancy
+                    {
+                        RuleCode = "INV_LINE_ITEM_INVALID_QUANTITY",
+                        Severity = DiscrepancySeverity.Error,
+                        FieldName = $"LineItem[{lineNum}].Quantity",
+                        Message = $"Line item {lineNum} ('{item.Description}') has non-positive quantity: {item.Quantity}.",
+                        ExpectedValue = "> 0",
+                        ActualValue = item.Quantity.ToString("F2")
+                    });
+                }
+
+                if (item.UnitPrice < 0)
+                {
+                    result.Discrepancies.Add(new ValidationDiscrepancy
+                    {
+                        RuleCode = "INV_LINE_ITEM_NEGATIVE_PRICE",
+                        Severity = DiscrepancySeverity.Error,
+                        FieldName = $"LineItem[{lineNum}].UnitPrice",
+                        Message = $"Line item {lineNum} ('{item.Description}') has negative unit price: {item.UnitPrice}.",
+                        ExpectedValue = ">= 0.00",
+                        ActualValue = item.UnitPrice.ToString("F2")
+                    });
+                }
+
+                decimal expectedLineTotal = Math.Round(item.Quantity * item.UnitPrice, 2, MidpointRounding.AwayFromZero);
+                if (Math.Abs(expectedLineTotal - item.LineTotal) > 0.02m)
+                {
+                    result.Discrepancies.Add(new ValidationDiscrepancy
+                    {
+                        RuleCode = "INV_LINE_ITEM_ARITHMETIC_MISMATCH",
+                        Severity = DiscrepancySeverity.Warning,
+                        FieldName = $"LineItem[{lineNum}].LineTotal",
+                        Message = $"Line item {lineNum} calculation mismatch: {item.Quantity} * {item.UnitPrice:F2} = {expectedLineTotal:F2}, but LineTotal is {item.LineTotal:F2}.",
+                        ExpectedValue = expectedLineTotal.ToString("F2"),
+                        ActualValue = item.LineTotal.ToString("F2")
+                    });
+                }
+
+                if (!string.IsNullOrWhiteSpace(item.Description))
+                {
+                    var normalizedDesc = item.Description.Trim();
+                    if (!seenDescriptions.Add(normalizedDesc))
+                    {
+                        result.Discrepancies.Add(new ValidationDiscrepancy
+                        {
+                            RuleCode = "INV_DUPLICATE_LINE_ITEM",
+                            Severity = DiscrepancySeverity.Warning,
+                            FieldName = $"LineItem[{lineNum}].Description",
+                            Message = $"Potential duplicate line item detected: '{normalizedDesc}'.",
+                            ExpectedValue = "Unique item description",
+                            ActualValue = normalizedDesc
+                        });
+                    }
+                }
+            }
+        }
+
         return result;
+    }
+
+    public static int GetExpectedDecimalPlaces(string currency)
+    {
+        return currency switch
+        {
+            "JPY" or "KRW" or "VND" or "CLP" or "PYG" or "ISK" => 0,
+            "BHD" or "KWD" or "OMR" or "TND" or "JOD" => 3,
+            _ => 2 // Standard for USD, EUR, GBP, CAD, AUD, INR, etc.
+        };
+    }
+
+    public static bool HasExcessDecimals(decimal value, int maxDecimals)
+    {
+        decimal scaled = value * (decimal)Math.Pow(10, maxDecimals);
+        return scaled != decimal.Truncate(scaled);
     }
 }
