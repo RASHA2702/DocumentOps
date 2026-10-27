@@ -1,6 +1,6 @@
-# DocumentOps — AI-Assisted Document & Invoice Ingestion Engine
+# DocumentOps — Automated Invoice Ingestion & Verification Engine
 
-> **Enterprise-grade document processing pipeline built with .NET 8 Clean Architecture, featuring deterministic regex extraction, an extensible AI/LLM structured schema pipeline, cross-field arithmetic validation, and a Human-in-the-Loop (HITL) review queue for automated ERP ingestion.**
+> **Enterprise-grade document processing pipeline built with .NET 8 Clean Architecture, featuring deterministic regex extraction, an extensible document intelligence pipeline, cross-field arithmetic validation, and a Human-in-the-Loop (HITL) review queue for automated ERP ingestion.**
 
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Tests](https://img.shields.io/badge/Tests-19%20Passed%20(100%25)-success)](https://github.com/RASHA2702/DocumentOps)
@@ -14,9 +14,9 @@
 
 Small and mid-sized enterprises (agencies, logistics firms, retail distributors, accounting practices) spend hundreds of hours manually keying vendor invoices and receipts into accounting software like QuickBooks, Xero, and SAP.
 
-While modern AI and OCR models can extract raw text, commercial operations face three critical risks:
-1. **Hallucination & Math Errors**: Raw LLM responses regularly hallucinate line totals or miscalculate sales taxes, corrupting accounting ledgers.
-2. **Vendor Rate Limits & Cost**: Sending thousands of repetitive invoices to external APIs introduces latency, token costs, and API downtime.
+While modern OCR and vision models can extract raw text, commercial operations face three critical risks:
+1. **Extraction & Arithmetic Errors**: Unvalidated models regularly misread line items or miscalculate sales taxes, corrupting accounting ledgers.
+2. **Vendor Rate Limits & Cost**: Sending thousands of repetitive invoices to external cloud APIs introduces latency, recurring fees, and API downtime.
 3. **Lack of Human Oversight**: Without a robust Human-in-the-Loop (HITL) review mechanism with blocking guards, error-ridden invoices get posted directly into financial ledgers.
 
 **DocumentOps** provides a battle-tested, self-hosted solution that combines **instant offline deterministic extraction**, **cross-field arithmetic validation**, **weighted confidence scoring**, and an **auditable human review workflow** before producing standard ERP export payloads.
@@ -51,9 +51,9 @@ flowchart TD
 
 ## 3. Key Capabilities
 
-### 🔍 Deterministic & Extensible AI Pipeline
+### 🔍 Deterministic & Extensible Extraction Pipeline
 - **Sub-Millisecond Regex Parser**: Extracts vendor name, invoice number, issue/due dates, tax ID, currency, subtotal, tax amount, and multi-line item tables 100% offline.
-- **Pluggable AI Interface**: `IDocumentExtractor` contract allows seamless integration with OpenAI (Structured Outputs), Claude 3.5, or Azure AI Document Intelligence with automatic fallback to deterministic parsing upon rate limiting or downtime.
+- **Extensible Pipeline Interface**: Standardized `IDocumentExtractor` contract allows drop-in integration with document intelligence APIs and vision models, with automatic fallback to deterministic parsing upon rate limiting or network downtime.
 
 ### 🛡️ Cross-Field Arithmetic Invariant Engine
 The validation engine continuously audits financial documents for arithmetic and temporal consistency:
@@ -180,11 +180,9 @@ Passed!  - Failed:     0, Passed:    19, Skipped:     0, Total:    19, Duration:
 
 ---
 
-## 8. Freelance & Contract Inquiries
+## 8. Author & Contact
 
-This system was designed and implemented by a full-stack .NET & cloud engineer specializing in business automation, accounts payable integration, and AI document processing for clients across the US, UK, EU, Australia, and Canada.
-
-- **GitHub Profile**: [@RASHA2702](https://github.com/RASHA2702)
-- **Primary Expertise**: C#, ASP.NET Core, Clean Architecture, Angular, TypeScript, SQL Server, Background Workers, API Integration, and Resilient Cloud Architecture.
-
-For freelance contracts, architecture consultations, or custom ERP integration development, reach out via GitHub.
+Built by **Rashad** — Full-Stack .NET & Angular Software Engineer
+- **GitHub**: [@RASHA2702](https://github.com/RASHA2702)
+- **Email**: [rashadhaq7@gmail.com](mailto:rashadhaq7@gmail.com)
+- **Available for**: Remote contracts, system architecture consulting, and custom ERP integration development.

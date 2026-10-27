@@ -2,7 +2,7 @@
 
 ## 1. Dual-Tier Extraction Architecture
 
-In commercial invoice ingestion pipelines, relying solely on third-party LLM APIs introduces latency, token costs, rate limits, and non-deterministic hallucination risks. Conversely, pure regex parsers struggle with unstructured scans.
+In commercial invoice ingestion pipelines, relying solely on third-party cloud extraction APIs introduces latency, recurring token fees, rate limits, and unverified data errors. Conversely, pure regex parsers struggle with unstructured scans.
 
 `DocumentOps` adopts a **hybrid dual-tier pipeline**:
 
@@ -13,7 +13,7 @@ In commercial invoice ingestion pipelines, relying solely on third-party LLM API
    - Supports ISO 8601, US (`MM/DD/YYYY`), UK/EU (`DD/MM/YYYY`), and long month name date notations.
    - Extracts structured multi-line item tables (Description, Quantity, Unit Price, Line Total).
 
-2. **Pluggable AI / OCR Interface (`IDocumentExtractor`)**:
+2. **Extensible Pipeline Interface (`IDocumentExtractor`)**:
    - Defines a standardized asynchronous contract:
      ```csharp
      public interface IDocumentExtractor

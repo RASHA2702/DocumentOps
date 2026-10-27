@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-`DocumentOps` is an enterprise document ingestion and automated accounts payable (AP) pipeline built on **.NET 8 Clean Architecture**. It solves the critical operational challenge of processing hundreds of vendor invoices, freight bills, and receipts by combining **deterministic heuristic extraction**, an **extensible AI/LLM structured schema pipeline**, a **cross-field arithmetic validation engine**, and a **Human-in-the-Loop (HITL) review queue**.
+`DocumentOps` is an enterprise document ingestion and automated accounts payable (AP) pipeline built on **.NET 8 Clean Architecture**. It solves the critical operational challenge of processing hundreds of vendor invoices, freight bills, and receipts by combining **deterministic heuristic extraction**, an **extensible document intelligence pipeline**, a **cross-field arithmetic validation engine**, and a **Human-in-the-Loop (HITL) review queue**.
 
 ```mermaid
 flowchart TD
@@ -51,7 +51,7 @@ c:\Projects\DocumentOps\
 
 3. **`DocumentOps.Infrastructure`**:
    - `RegexDocumentExtractor`: High-precision deterministic parser for offline invoice processing.
-   - `MockAiDocumentExtractor`: Demonstrates pluggable integration with OpenAI / Claude / Azure AI Document Intelligence.
+   - `MockAiDocumentExtractor`: Provides document intelligence pipeline adapter with schema validation.
    - `InMemoryDocumentRepository`: Thread-safe concurrent storage pre-seeded with realistic enterprise invoice edge cases.
    - `ErpExportService`: Serializes approved invoices into UBL 2.1-compliant JSON and general-ledger accounting CSVs.
 
