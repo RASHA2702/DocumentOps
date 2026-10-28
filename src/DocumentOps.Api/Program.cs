@@ -193,6 +193,18 @@ app.MapPost("/api/documents/upload", async (DocumentProcessingService processing
     });
 });
 
+// Batch Upload & Process Multiple Documents
+app.MapPost("/api/documents/batch-upload", async (DocumentProcessingService processingService, List<DocumentUploadRequest> requests, CancellationToken ct) =>
+{
+    if (requests == null || requests.Count == 0)
+    {
+        return Results.BadRequest(new { detail = "Batch request cannot be empty." });
+    }
+
+    var summary = await processingService.ProcessBatchAsync(requests, ct);
+    return Results.Ok(summary);
+});
+
 // Review & Edit Extracted Fields
 app.MapPut("/api/documents/{id:guid}/review", async (
     DocumentReviewService reviewService,

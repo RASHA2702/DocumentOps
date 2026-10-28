@@ -6,6 +6,12 @@ namespace DocumentOps.Application.Services;
 
 public class ValidationEngine : IValidationEngine
 {
+    private readonly ITaxIdValidator _taxIdValidator;
+
+    public ValidationEngine(ITaxIdValidator? taxIdValidator = null)
+    {
+        _taxIdValidator = taxIdValidator ?? new TaxIdValidator();
+    }
     public ValidationResult Validate(InvoiceData invoice, DocumentRecord document)
     {
         var result = new ValidationResult();
@@ -219,6 +225,32 @@ public class ValidationEngine : IValidationEngine
                         });
                     }
                 }
+            }
+        }
+
+        // 10. Vendor Tax ID Syntax & Compliance Validation
+        if (!string.IsNullOrWhiteSpace(invoice.VendorTaxId))
+        {
+            var fallbackCountry = invoice.Currency switch
+            {
+                "USD" => "US",
+                "GBP" => "GB",
+                "AUD" => "AU",
+                _ => null
+            };
+
+            var taxResult = _taxIdValidator.ValidateTaxId(invoice.VendorTaxId, fallbackCountry);
+            if (!taxResult.IsValid)
+            {
+                result.Discrepancies.Add(new ValidationDiscrepancy
+                {
+                    RuleCode = "INV_TAX_ID_SYNTAX_INVALID",
+                    Severity = DiscrepancySeverity.Warning,
+                    FieldName = nameof(invoice.VendorTaxId),
+                    Message = $"Vendor Tax ID syntax error: {taxResult.ErrorMessage}",
+                    ExpectedValue = "Conforming EIN, VAT, or ABN format",
+                    ActualValue = invoice.VendorTaxId
+                });
             }
         }
 

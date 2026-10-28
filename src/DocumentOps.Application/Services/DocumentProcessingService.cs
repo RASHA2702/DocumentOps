@@ -109,6 +109,56 @@ public class DocumentProcessingService
         return doc;
     }
 
+    public async Task<BatchProcessingSummaryDto> ProcessBatchAsync(IEnumerable<DocumentUploadRequest> requests, CancellationToken ct = default)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var processed = new List<DocumentRecord>();
+        var errors = new List<string>();
+
+        foreach (var req in requests)
+        {
+            if (ct.IsCancellationRequested) break;
+            try
+            {
+                var doc = await ProcessDocumentAsync(req, ct);
+                processed.Add(doc);
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"Failed to process '{req.FileName}': {ex.Message}");
+            }
+        }
+
+        sw.Stop();
+        int autoApproved = processed.Count(d => d.Status == DocumentStatus.Approved);
+        int requiresReview = processed.Count(d => d.Status == DocumentStatus.RequiresReview);
+
+        return new BatchProcessingSummaryDto(
+            TotalReceived: processed.Count + errors.Count,
+            SucceededCount: processed.Count,
+            FailedCount: errors.Count,
+            AutoApprovedCount: autoApproved,
+            RequiresReviewCount: requiresReview,
+            TotalDurationMs: sw.ElapsedMilliseconds,
+            Documents: processed.Select(d => new DocumentSummaryDto
+            {
+                Id = d.Id,
+                FileName = d.FileName,
+                FileSizeBytes = d.FileSizeBytes,
+                UploadedAt = d.UploadedAt,
+                Status = d.Status,
+                ConfidenceScore = d.ConfidenceScore,
+                InvoiceNumber = d.Invoice?.InvoiceNumber,
+                VendorName = d.Invoice?.VendorName,
+                TotalAmount = d.Invoice?.TotalAmount,
+                Currency = d.Invoice?.Currency,
+                DiscrepancyCount = d.Discrepancies.Count,
+                UnresolvedErrorCount = d.Discrepancies.Count(disc => disc.Severity == DiscrepancySeverity.Error && !disc.IsResolved)
+            }).ToList(),
+            Errors: errors
+        );
+    }
+
     private static string ComputeHash(string text)
     {
         using var sha256 = SHA256.Create();

@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddSingleton<IDocumentExtractor, RegexDocumentExtractor>();
 
         // Validation & Scoring
+        services.AddSingleton<ITaxIdValidator, TaxIdValidator>();
         services.AddSingleton<IValidationEngine, ValidationEngine>();
         services.AddSingleton<IConfidenceScorer, ConfidenceScorer>();
 

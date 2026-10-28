@@ -190,4 +190,23 @@ public class ValidationEngineTests
 
         Assert.IsTrue(result.Discrepancies.Any(d => d.RuleCode == "INV_DUPLICATE_LINE_ITEM"));
     }
+
+    [TestMethod]
+    public void Validate_VendorTaxId_WithMalformedSyntax_FlagsWarning()
+    {
+        var doc = new DocumentRecord();
+        var invoice = new InvoiceData
+        {
+            InvoiceNumber = "INV-007",
+            VendorName = "Global Vendor",
+            VendorTaxId = "INVALID_TAX_ID_123!",
+            Subtotal = 100m,
+            TaxAmount = 20m,
+            TotalAmount = 120m
+        };
+
+        var result = _engine.Validate(invoice, doc);
+
+        Assert.IsTrue(result.Discrepancies.Any(d => d.RuleCode == "INV_TAX_ID_SYNTAX_INVALID"));
+    }
 }

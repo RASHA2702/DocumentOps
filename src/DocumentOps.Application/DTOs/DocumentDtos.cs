@@ -75,3 +75,14 @@ public class MetricsSummaryDto
     public double AverageConfidencePercent { get; set; }
     public decimal TotalApprovedSpend { get; set; }
 }
+
+public record BatchProcessingSummaryDto(
+    int TotalReceived,
+    int SucceededCount,
+    int FailedCount,
+    int AutoApprovedCount,
+    int RequiresReviewCount,
+    long TotalDurationMs,
+    IReadOnlyList<DocumentSummaryDto> Documents,
+    IReadOnlyList<string> Errors
+);
